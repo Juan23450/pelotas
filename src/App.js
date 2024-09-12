@@ -158,12 +158,55 @@ const FinalProductRow = ({ finalProductRowList }) => {
   );
 };
 
+const ExpandedFinalProductRow = ({ finalProductRowList }) => {
+  const distinctValues = [...new Set(finalProductRowList.filter(item => item !== 'None').map(item => item.value))];
+
+  return (
+    <div className="mb-4 overflow-y-auto h-64 border border-white p-2">
+      <div className="font-bold mb-2">Expanded Final Product Row:</div>
+      {distinctValues.map((value, rowIndex) => (
+        <div
+          key={rowIndex}
+          className="h-10 relative overflow-hidden whitespace-nowrap border-b border-white mb-2"
+          style={{ backgroundImage: 'linear-gradient(90deg, #333 1px, transparent 1px)', backgroundSize: '10px 10px' }}
+        >
+          {finalProductRowList.map((item, index) => (
+            item !== 'None' && item.value === value && (
+              <span
+                key={index}
+                className="absolute"
+                style={{
+                  left: `${index * 10}px`,
+                  top: '0px',
+                  width: '10px',
+                  height: '10px',
+                  backgroundColor: `hsl(${(item.row * 30) % 360}, 70%, 50%)`,
+                  border: '1px solid white',
+                  zIndex: 3,
+                  display: 'flex',
+                  justifyContent: 'center',
+                  alignItems: 'center',
+                  fontSize: '6px',
+                  color: 'white',
+                  fontWeight: 'bold',
+                }}
+                title={`Value: ${item.value}, Row: ${item.row}`}
+              >
+                {item.value}
+              </span>
+            )
+          ))}
+        </div>
+      ))}
+    </div>
+  );
+};
+
 const NumberPatternSliders = () => {
   const [rowCount, setRowCount] = useState(10);
   const [patterns, setPatterns] = useState({});
-  const [isStatic, setIsStatic] = useState(false); // Static mode
+  const [isStatic, setIsStatic] = useState(false);
   const [conflictColumns, setConflictColumns] = useState([]);
-  const [finalProductRowList, setFinalProductRowList] = useState([]);
   const [computedProductRowList, setComputedProductRowList] = useState([]);
   const maxRows = 50;
 
@@ -171,7 +214,6 @@ const NumberPatternSliders = () => {
     setPatterns((prev) => ({ ...prev, [number]: pattern }));
   };
 
-  // Recalculate conflicts when static mode is enabled or pattern changes
   useEffect(() => {
     if (isStatic) {
       const visiblePatterns = Object.entries(patterns)
@@ -190,7 +232,7 @@ const NumberPatternSliders = () => {
           .map(Number)
       );
     } else {
-      setConflictColumns([]); // Clear conflicts when not in static mode
+      setConflictColumns([]);
     }
   }, [patterns, isStatic, rowCount]);
 
@@ -198,9 +240,9 @@ const NumberPatternSliders = () => {
     const visiblePatterns = Object.entries(patterns)
       .filter(([key, pattern]) => key <= rowCount && pattern.length > 0)
       .map(([key, pattern]) => ({ row: parseInt(key), pattern }));
-  
-    let result = Array(100).fill('None');
-    
+
+    let result = Array(1000).fill('None');
+
     if (visiblePatterns.length > 0) {
       visiblePatterns[0].pattern.forEach(instance => {
         if (instance.position < result.length) {
@@ -208,18 +250,18 @@ const NumberPatternSliders = () => {
         }
       });
     }
-  
+
     for (let rowIndex = 1; rowIndex < visiblePatterns.length; rowIndex++) {
       const { row, pattern } = visiblePatterns[rowIndex];
       let currentInsertIndex = 0;
-  
+
       pattern.forEach(instance => {
         let segmentLength = instance.position + 1;
         const previousInstance = pattern.find(inst => inst.position < instance.position);
         if (previousInstance) {
           segmentLength = instance.position - previousInstance.position;
         }
-  
+
         let noneCount = 0;
         while (noneCount < segmentLength && currentInsertIndex < result.length) {
           if (result[currentInsertIndex] === 'None') {
@@ -227,28 +269,27 @@ const NumberPatternSliders = () => {
           }
           currentInsertIndex++;
         }
-  
+
         if (currentInsertIndex <= result.length) {
           result[currentInsertIndex - 1] = { value: instance.value, row };
         }
       });
     }
-  
+
     setComputedProductRowList(result);
   };
 
-  // Static merge logic
   const handleStaticMerge = () => {
     const visiblePatterns = Object.entries(patterns)
       .filter(([key, pattern]) => key <= rowCount && pattern.length > 0)
       .map(([key, pattern]) => ({ row: parseInt(key), pattern }));
-  
+
     const result = Array(100).fill('None');
-    const occupiedColumns = new Set(); // To track occupied columns and avoid conflicts
+    const occupiedColumns = new Set();
 
     for (let rowIndex = 0; rowIndex < visiblePatterns.length; rowIndex++) {
       const { row, pattern } = visiblePatterns[rowIndex];
-      
+
       for (const instance of pattern) {
         if (instance.value !== undefined) {
           if (occupiedColumns.has(instance.position)) {
@@ -285,86 +326,87 @@ const NumberPatternSliders = () => {
   };
 
   return (
-    <div className="p-4 bg-black text-white flex h-screen">
-      <div className="flex flex-col">
-        <input
-          type="range"
-          min="1"
-          max={maxRows}
-          value={rowCount}
-          onChange={(e) => setRowCount(parseInt(e.target.value))}
-          className="h-[80vh] -rotate-180 mr-4 vertical-slider"
-        />
-        <button
-          className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded mb-4"
-          onClick={computeFinalProductRow}
-        >
-          Compute
-        </button>
-
-        <button
-          className="bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 rounded mb-4"
-          onClick={handleStaticMerge}
-        >
-          Static
-        </button>
-
-        <button
-          className="bg-yellow-500 hover:bg-yellow-700 text-white font-bold py-2 px-4 rounded mb-4"
-          onClick={copyToCSV}
-        >
-          Copy CSV
-        </button>
-
-        <button
-          className="bg-purple-500 hover:bg-purple-700 text-white font-bold py-2 px-4 rounded mb-4"
-          onClick={copyToPython}
-        >
-          Copy Python
-        </button>
-
-        <div className="flex justify-center">
-          <label className="font-bold mr-2">Number of rows:</label>
+    <div className="p-4 bg-black text-white flex flex-col h-screen">
+      <div className="flex mb-4">
+        <div className="flex flex-col mr-4">
           <input
-            type="number"
+            type="range"
             min="1"
             max={maxRows}
             value={rowCount}
-            onChange={(e) =>
-              setRowCount(Math.min(Math.max(parseInt(e.target.value) || 1, 1), maxRows))
-            }
-            className="border rounded px-2 py-1 bg-gray-800 text-white"
+            onChange={(e) => setRowCount(parseInt(e.target.value))}
+            className="h-[80vh] -rotate-180 mr-4 vertical-slider"
           />
+          <button
+            className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded mb-4"
+            onClick={computeFinalProductRow}
+          >
+            Compute
+          </button>
+          <button
+            className="bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 rounded mb-4"
+            onClick={handleStaticMerge}
+          >
+            Static
+          </button>
+          <button
+            className="bg-yellow-500 hover:bg-yellow-700 text-white font-bold py-2 px-4 rounded mb-4"
+            onClick={copyToCSV}
+          >
+            Copy CSV
+          </button>
+          <button
+            className="bg-purple-500 hover:bg-purple-700 text-white font-bold py-2 px-4 rounded mb-4"
+            onClick={copyToPython}
+          >
+            Copy Python
+          </button>
+          <div className="flex justify-center">
+            <label className="font-bold mr-2">Number of rows:</label>
+            <input
+              type="number"
+              min="1"
+              max={maxRows}
+              value={rowCount}
+              onChange={(e) =>
+                setRowCount(Math.min(Math.max(parseInt(e.target.value) || 1, 1), maxRows))
+              }
+              className="border rounded px-2 py-1 bg-gray-800 text-white"
+            />
+          </div>
+          <div className="flex items-center mt-4">
+            <input
+              type="checkbox"
+              checked={isStatic}
+              onChange={(e) => setIsStatic(e.target.checked)}
+              className="mr-2"
+            />
+            <label className="text-white">Static Mode (Highlight Conflicts)</label>
+          </div>
         </div>
-
-        {/* Static Mode Checkbox */}
-        <div className="flex items-center mt-4">
-          <input
-            type="checkbox"
-            checked={isStatic}
-            onChange={(e) => setIsStatic(e.target.checked)}
-            className="mr-2"
-          />
-          <label className="text-white">Static Mode (Highlight Conflicts)</label>
+        <div className="flex-grow flex flex-col">
+          <div className="flex-grow overflow-x-hidden overflow-y-auto">
+            {[...Array(rowCount)].map((_, index) => (
+              <NumberPattern
+                key={index + 1}
+                number={index + 1}
+                onPatternChange={handlePatternChange}
+                isStatic={isStatic}
+                conflictColumns={conflictColumns}
+              />
+            ))}
+          </div>
         </div>
       </div>
-
-      <div className="flex-grow flex flex-col">
+      <div>
         {computedProductRowList.length > 0 && (
           <FinalProductRow finalProductRowList={computedProductRowList} />
         )}
-
-        <div className="flex-grow overflow-x-hidden overflow-y-auto">
-          {[...Array(rowCount)].map((_, index) => (
-            <NumberPattern
-              key={index + 1}
-              number={index + 1}
-              onPatternChange={handlePatternChange}
-              isStatic={isStatic}
-              conflictColumns={conflictColumns}
-            />
-          ))}
-        </div>
+      </div>
+      <div className="mt-4">
+        {computedProductRowList.length > 0 && (
+          <ExpandedFinalProductRow finalProductRowList={computedProductRowList} />
+        )}
       </div>
     </div>
   );
