@@ -62,6 +62,17 @@ const NumberPattern = ({ number, onPatternChange, isStatic, conflictColumns }) =
             className="w-32 h-2 bg-blue-600 rounded-lg appearance-none cursor-pointer mr-2"
           />
           <span className="text-sm w-24">Base Value: {baseValue}</span>
+          <button
+            onClick={() => {
+              setBaseValue(0);
+              setPeriodicInterval(1);
+              setPatternShift(0);
+              setInstances(10);
+            }}
+            className="bg-red-500 hover:bg-red-700 text-white font-bold py-1 px-2 rounded ml-2"
+          >
+            Reset
+          </button>
         </div>
 
         <div
@@ -76,8 +87,8 @@ const NumberPattern = ({ number, onPatternChange, isStatic, conflictColumns }) =
                   style={{
                     left: `${item.position * 10}px`,
                     width: '10px',
-                    backgroundColor: 'rgba(0, 255, 0, 0.4)',
-                    boxShadow: '0 0 10px 5px rgba(0, 255, 0, 0.6)',
+                    backgroundColor: 'rgba(255, 0, 0, 0.6)',  // Turn the conflicting instances red
+                    boxShadow: '0 0 10px 5px rgba(255, 0, 0, 0.6)',
                     zIndex: 2,
                   }}
                 />
@@ -92,8 +103,8 @@ const NumberPattern = ({ number, onPatternChange, isStatic, conflictColumns }) =
                     height: '10px',
                     backgroundColor:
                       isStatic && conflictColumns.includes(item.position)
-                        ? 'rgb(255, 0, 0)'
-                        : 'rgb(255, 255, 0)',
+                        ? 'rgb(255, 0, 0)'  // Red for conflicting columns
+                        : 'rgb(255, 255, 0)', // Yellow for regular
                     border: '1px solid white',
                     zIndex: 3,
                   }}
@@ -150,7 +161,7 @@ const FinalProductRow = ({ finalProductRowList }) => {
 const NumberPatternSliders = () => {
   const [rowCount, setRowCount] = useState(10);
   const [patterns, setPatterns] = useState({});
-  const [isStatic, setIsStatic] = useState(false);
+  const [isStatic, setIsStatic] = useState(false); // Static mode
   const [conflictColumns, setConflictColumns] = useState([]);
   const [finalProductRowList, setFinalProductRowList] = useState([]);
   const [computedProductRowList, setComputedProductRowList] = useState([]);
@@ -160,6 +171,7 @@ const NumberPatternSliders = () => {
     setPatterns((prev) => ({ ...prev, [number]: pattern }));
   };
 
+  // Recalculate conflicts when static mode is enabled or pattern changes
   useEffect(() => {
     if (isStatic) {
       const visiblePatterns = Object.entries(patterns)
@@ -178,7 +190,7 @@ const NumberPatternSliders = () => {
           .map(Number)
       );
     } else {
-      setConflictColumns([]);
+      setConflictColumns([]); // Clear conflicts when not in static mode
     }
   }, [patterns, isStatic, rowCount]);
 
@@ -225,13 +237,14 @@ const NumberPatternSliders = () => {
     setComputedProductRowList(result);
   };
 
+  // Static merge logic
   const handleStaticMerge = () => {
     const visiblePatterns = Object.entries(patterns)
       .filter(([key, pattern]) => key <= rowCount && pattern.length > 0)
       .map(([key, pattern]) => ({ row: parseInt(key), pattern }));
   
     const result = Array(100).fill('None');
-    const occupiedColumns = new Set();
+    const occupiedColumns = new Set(); // To track occupied columns and avoid conflicts
 
     for (let rowIndex = 0; rowIndex < visiblePatterns.length; rowIndex++) {
       const { row, pattern } = visiblePatterns[rowIndex];
@@ -322,6 +335,17 @@ const NumberPatternSliders = () => {
             }
             className="border rounded px-2 py-1 bg-gray-800 text-white"
           />
+        </div>
+
+        {/* Static Mode Checkbox */}
+        <div className="flex items-center mt-4">
+          <input
+            type="checkbox"
+            checked={isStatic}
+            onChange={(e) => setIsStatic(e.target.checked)}
+            className="mr-2"
+          />
+          <label className="text-white">Static Mode (Highlight Conflicts)</label>
         </div>
       </div>
 
