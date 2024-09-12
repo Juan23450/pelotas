@@ -40,35 +40,8 @@ const NumberPattern = ({ number, onPatternChange, isStatic, conflictColumns }) =
     document.addEventListener('mouseup', () => document.removeEventListener('mousemove', handleMove), { once: true });
   };
 
-  const pythonList = Array(20).fill('None');
-  pattern.forEach(instance => {
-    if (instance.value !== undefined && instance.position < 20) {
-      pythonList[instance.position] = instance.value;
-    }
-  });
-
-  const calculateSegmentLength = (currentPosition) => {
-    let segmentLength = currentPosition + 1;
-    const previousInstance = pattern.find(instance => instance.position < currentPosition && instance.value !== undefined);
-    if (previousInstance) {
-      segmentLength = currentPosition - previousInstance.position;
-    }
-    return segmentLength;
-  };
-
   return (
     <div className="mb-4 flex items-center">
-      <button
-        onClick={() => {
-          setBaseValue(0);
-          setPeriodicInterval(1);
-          setPatternShift(0);
-          setInstances(10);
-        }}
-        className="bg-red-500 hover:bg-red-700 text-white font-bold py-1 px-2 rounded mr-2"
-      >
-        Reset
-      </button>
       <div className="flex-grow">
         <div className="flex items-center flex-wrap text-white mb-2">
           <span className="w-8 font-bold mr-2">{number}:</span>
@@ -80,7 +53,6 @@ const NumberPattern = ({ number, onPatternChange, isStatic, conflictColumns }) =
             onChange={(e) => setInstances(parseInt(e.target.value))}
             className="w-32 h-2 bg-blue-600 rounded-lg appearance-none cursor-pointer mr-2"
           />
-          <span className="text-sm w-24">Instances: {instances}</span>
           <input
             type="range"
             min="1"
@@ -89,7 +61,6 @@ const NumberPattern = ({ number, onPatternChange, isStatic, conflictColumns }) =
             onChange={(e) => setPeriodicInterval(parseInt(e.target.value))}
             className="w-32 h-2 bg-blue-600 rounded-lg appearance-none cursor-pointer mr-2"
           />
-          <span className="text-sm w-36">Periodic Interval: {periodicInterval}</span>
           <span className="text-sm w-24">Base Value: {baseValue}</span>
         </div>
 
@@ -132,19 +103,6 @@ const NumberPattern = ({ number, onPatternChange, isStatic, conflictColumns }) =
             </React.Fragment>
           ))}
         </div>
-
-        <div className="text-white mt-2">
-          Python List: [{pythonList.join(', ')}]
-        </div>
-
-        <div className="text-white mt-2">
-          Segment Lengths: {pattern.map(item => {
-            if (item.value !== undefined) {
-              return `${item.value}: ${calculateSegmentLength(item.position)}`;
-            }
-            return null;
-          }).filter(Boolean).join(', ')}
-        </div>
       </div>
     </div>
   );
@@ -184,11 +142,6 @@ const FinalProductRow = ({ finalProductRowList }) => {
             </span>
           )
         ))}
-      </div>
-      <div className="text-white mt-2 overflow-x-auto">
-        Python List: [{finalProductRowList.map(item => 
-          item === 'None' ? 'None' : `{value: ${item.value}, row: ${item.row}}`
-        ).join(', ')}]
       </div>
     </div>
   );
@@ -272,14 +225,13 @@ const NumberPatternSliders = () => {
     setComputedProductRowList(result);
   };
 
-  // Static merge logic
   const handleStaticMerge = () => {
     const visiblePatterns = Object.entries(patterns)
       .filter(([key, pattern]) => key <= rowCount && pattern.length > 0)
       .map(([key, pattern]) => ({ row: parseInt(key), pattern }));
   
     const result = Array(100).fill('None');
-    const occupiedColumns = new Set(); // To track occupied columns and avoid conflicts
+    const occupiedColumns = new Set();
 
     for (let rowIndex = 0; rowIndex < visiblePatterns.length; rowIndex++) {
       const { row, pattern } = visiblePatterns[rowIndex];
@@ -299,7 +251,6 @@ const NumberPatternSliders = () => {
     setComputedProductRowList(result);
   };
 
-  // Copy Final Product Row to clipboard as CSV
   const copyToCSV = () => {
     const csvString = computedProductRowList
       .map(item => (item !== 'None' ? item.value : ''))
@@ -310,7 +261,6 @@ const NumberPatternSliders = () => {
     });
   };
 
-  // Copy Final Product Row to clipboard as Python List
   const copyToPython = () => {
     const pythonString = `final_product_row = [${computedProductRowList
       .map(item => (item !== 'None' ? item.value : 'None'))
@@ -323,40 +273,15 @@ const NumberPatternSliders = () => {
 
   return (
     <div className="p-4 bg-black text-white flex h-screen">
-      <input
-        type="range"
-        min="1"
-        max={maxRows}
-        value={rowCount}
-        onChange={(e) => setRowCount(parseInt(e.target.value))}
-        className="h-[80vh] -rotate-180 mr-4 vertical-slider"
-      />
-      <div className="flex-grow flex flex-col">
-        <div className="flex justify-between items-center mb-4">
-          <div className="static-checkbox">
-            <input
-              type="checkbox"
-              checked={isStatic}
-              onChange={(e) => setIsStatic(e.target.checked)}
-              className="mr-2"
-            />
-            <label>Static</label>
-          </div>
-          <div>
-            <label className="font-bold mr-2">Number of rows (1-{maxRows}):</label>
-            <input
-              type="number"
-              min="1"
-              max={maxRows}
-              value={rowCount}
-              onChange={(e) =>
-                setRowCount(Math.min(Math.max(parseInt(e.target.value) || 1, 1), maxRows))
-              }
-              className="border rounded px-2 py-1 bg-gray-800 text-white"
-            />
-          </div>
-        </div>
-
+      <div className="flex flex-col">
+        <input
+          type="range"
+          min="1"
+          max={maxRows}
+          value={rowCount}
+          onChange={(e) => setRowCount(parseInt(e.target.value))}
+          className="h-[80vh] -rotate-180 mr-4 vertical-slider"
+        />
         <button
           className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded mb-4"
           onClick={computeFinalProductRow}
@@ -385,6 +310,22 @@ const NumberPatternSliders = () => {
           Copy Python
         </button>
 
+        <div className="flex justify-center">
+          <label className="font-bold mr-2">Number of rows:</label>
+          <input
+            type="number"
+            min="1"
+            max={maxRows}
+            value={rowCount}
+            onChange={(e) =>
+              setRowCount(Math.min(Math.max(parseInt(e.target.value) || 1, 1), maxRows))
+            }
+            className="border rounded px-2 py-1 bg-gray-800 text-white"
+          />
+        </div>
+      </div>
+
+      <div className="flex-grow flex flex-col">
         {computedProductRowList.length > 0 && (
           <FinalProductRow finalProductRowList={computedProductRowList} />
         )}
