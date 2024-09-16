@@ -1,10 +1,17 @@
 import React, { useState, useEffect } from 'react';
 
-const NumberPattern = ({ number, onPatternChange, isStatic, conflictColumns }) => {
-  const [baseValue, setBaseValue] = useState(0);
+const NumberPattern = ({
+  number,
+  onPatternChange,
+  isStatic,
+  conflictColumns,
+  computeOrder,
+  onComputeOrderChange,
+}) => {
+  const [baseValue, setBaseValue] = useState(1);
   const [periodicInterval, setPeriodicInterval] = useState(1);
   const [instances, setInstances] = useState(10);
-  const [patternShift, setPatternShift] = useState(0);
+  const [patternShift, setPatternShift] = useState(-1); // Shift pattern so first instance is at index 0
 
   const generatePattern = () => {
     let pattern = [];
@@ -14,20 +21,32 @@ const NumberPattern = ({ number, onPatternChange, isStatic, conflictColumns }) =
       currentPos += space;
       pattern.push({ value: number, instance: n, position: currentPos });
       for (let i = 1; i < periodicInterval; i++) {
-        pattern.push({ value: undefined, instance: -1, position: currentPos + i });
+        pattern.push({
+          value: undefined,
+          instance: -1,
+          position: currentPos + i,
+        });
       }
-      currentPos += periodicInterval;
+      currentPos += periodicInterval - 1;
     }
     return pattern;
   };
 
-  const pattern = generatePattern();
+  const [pattern, setPattern] = useState(generatePattern());
+
+  useEffect(() => {
+    setPattern(generatePattern());
+  }, [baseValue, periodicInterval, instances, patternShift]);
 
   const generatePythonList = () => {
     const maxLength = 1000; // Adjust as needed
     const pythonList = Array(maxLength).fill('None');
-    pattern.forEach(item => {
-      if (item.value !== undefined && item.position < maxLength) {
+    pattern.forEach((item) => {
+      if (
+        item.value !== undefined &&
+        item.position >= 0 && // Ensure position is non-negative
+        item.position < maxLength
+      ) {
         pythonList[item.position] = number;
       }
     });
@@ -38,7 +57,7 @@ const NumberPattern = ({ number, onPatternChange, isStatic, conflictColumns }) =
 
   useEffect(() => {
     onPatternChange(number, pythonList);
-  }, [baseValue, periodicInterval, instances, patternShift, number, onPatternChange]);
+  }, [pattern]);
 
   const handleDrag = (e, index) => {
     e.preventDefault();
@@ -50,14 +69,18 @@ const NumberPattern = ({ number, onPatternChange, isStatic, conflictColumns }) =
       else setPatternShift(startValue + diff);
     };
     document.addEventListener('mousemove', handleMove);
-    document.addEventListener('mouseup', () => document.removeEventListener('mousemove', handleMove), { once: true });
+    document.addEventListener(
+      'mouseup',
+      () => document.removeEventListener('mousemove', handleMove),
+      { once: true }
+    );
   };
 
   // Calculate segment lengths
   const calculateSegmentLengths = () => {
     const indices = pattern
-      .filter(item => item.value !== undefined)
-      .map(item => item.position);
+      .filter((item) => item.value !== undefined)
+      .map((item) => item.position);
     return indices.map((pos, idx) => {
       if (idx === 0) return pos + 1;
       return pos - indices[idx - 1];
@@ -66,6 +89,19 @@ const NumberPattern = ({ number, onPatternChange, isStatic, conflictColumns }) =
 
   return (
     <div className="mb-4 flex items-center">
+      <div
+        className="w-8 h-8 flex items-center justify-center mr-2 cursor-pointer"
+        onClick={() => onComputeOrderChange(number)}
+        style={{
+          border: '2px solid white',
+          borderRadius: '4px',
+          backgroundColor: computeOrder ? 'blue' : 'transparent',
+          color: 'white',
+          fontWeight: 'bold',
+        }}
+      >
+        {computeOrder || ''}
+      </div>
       <div className="flex-grow">
         <div className="flex items-center flex-wrap text-white mb-2">
           <span className="w-8 font-bold mr-2">{number}:</span>
@@ -88,9 +124,9 @@ const NumberPattern = ({ number, onPatternChange, isStatic, conflictColumns }) =
           <span className="text-sm w-24">Base Value: {baseValue}</span>
           <button
             onClick={() => {
-              setBaseValue(0);
+              setBaseValue(1);
               setPeriodicInterval(1);
-              setPatternShift(0);
+              setPatternShift(-1); // Reset to -1 to start at index 0
               setInstances(10);
             }}
             className="bg-red-500 hover:bg-red-700 text-white font-bold py-1 px-2 rounded ml-2"
@@ -102,7 +138,8 @@ const NumberPattern = ({ number, onPatternChange, isStatic, conflictColumns }) =
         <div
           className="h-10 relative overflow-hidden whitespace-nowrap border-b border-white"
           style={{
-            backgroundImage: 'linear-gradient(90deg, #333 1px, transparent 1px)',
+            backgroundImage:
+              'linear-gradient(90deg, #333 1px, transparent 1px)',
             backgroundSize: '10px 10px',
           }}
         >
@@ -120,7 +157,7 @@ const NumberPattern = ({ number, onPatternChange, isStatic, conflictColumns }) =
                   }}
                 />
               )}
-              {item.value !== undefined && (
+              {item.value !== undefined && item.position >= 0 && (
                 <span
                   className="absolute cursor-move"
                   style={{
@@ -175,32 +212,33 @@ const FinalProductRow = ({ finalProductRowList }) => {
           backgroundSize: '10px 10px',
         }}
       >
-        {finalProductRowList.map((item, index) => (
-          item !== 'None' && (
-            <span
-              key={index}
-              className="absolute"
-              style={{
-                left: `${index * 10}px`,
-                top: '0px',
-                width: '10px',
-                height: '10px',
-                backgroundColor: `hsl(${(item.value * 30) % 360}, 70%, 50%)`,
-                border: '1px solid white',
-                zIndex: 3,
-                display: 'flex',
-                justifyContent: 'center',
-                alignItems: 'center',
-                fontSize: '6px',
-                color: 'white',
-                fontWeight: 'bold',
-              }}
-              title={`Value: ${item.value}, Row: ${item.row}`}
-            >
-              {item.value}
-            </span>
-          )
-        ))}
+        {finalProductRowList.map(
+          (item, index) =>
+            item !== 'None' && (
+              <span
+                key={index}
+                className="absolute"
+                style={{
+                  left: `${index * 10}px`,
+                  top: '0px',
+                  width: '10px',
+                  height: '10px',
+                  backgroundColor: `hsl(${(item.value * 30) % 360}, 70%, 50%)`,
+                  border: '1px solid white',
+                  zIndex: 3,
+                  display: 'flex',
+                  justifyContent: 'center',
+                  alignItems: 'center',
+                  fontSize: '6px',
+                  color: 'white',
+                  fontWeight: 'bold',
+                }}
+                title={`Value: ${item.value}, Row: ${item.row}`}
+              >
+                {item.value}
+              </span>
+            )
+        )}
       </div>
       <div className="text-white mt-2 overflow-x-auto">
         <pre
@@ -211,9 +249,7 @@ const FinalProductRow = ({ finalProductRowList }) => {
           }}
         >
           {`final_product_row = [${finalProductRowList
-            .map((item) =>
-              item === 'None' ? 'None' : `${item.value}`
-            )
+            .map((item) => (item === 'None' ? 'None' : `${item.value}`))
             .join(', ')}]`}
         </pre>
       </div>
@@ -224,9 +260,7 @@ const FinalProductRow = ({ finalProductRowList }) => {
 const ExpandedFinalProductRow = ({ finalProductRowList }) => {
   const distinctValues = [
     ...new Set(
-      finalProductRowList
-        .filter((item) => item !== 'None')
-        .map((item) => item.value)
+      finalProductRowList.filter((item) => item !== 'None').map((item) => item.value)
     ),
   ];
 
@@ -238,7 +272,8 @@ const ExpandedFinalProductRow = ({ finalProductRowList }) => {
           <div
             className="h-10 relative overflow-hidden whitespace-nowrap border-b border-white mb-2"
             style={{
-              backgroundImage: 'linear-gradient(90deg, #333 1px, transparent 1px)',
+              backgroundImage:
+                'linear-gradient(90deg, #333 1px, transparent 1px)',
               backgroundSize: '10px 10px',
             }}
           >
@@ -280,10 +315,8 @@ const ExpandedFinalProductRow = ({ finalProductRowList }) => {
               }}
             >
               {`python_list_value_${value} = [${finalProductRowList
-                .map((item, index) =>
-                  item === 'None' || item.value !== value
-                    ? 'None'
-                    : `${item.value}`
+                .map((item) =>
+                  item === 'None' || item.value !== value ? 'None' : `${item.value}`
                 )
                 .join(', ')}]`}
             </pre>
@@ -300,10 +333,34 @@ const NumberPatternSliders = () => {
   const [isStatic, setIsStatic] = useState(false);
   const [conflictColumns, setConflictColumns] = useState([]);
   const [finalProductRowList, setFinalProductRowList] = useState([]);
+  const [computeOrder, setComputeOrder] = useState({});
   const maxRows = 50;
 
   const handlePatternChange = (number, pythonList) => {
     setPatterns((prev) => ({ ...prev, [number]: pythonList }));
+  };
+
+  const handleComputeOrderChange = (number) => {
+    setComputeOrder((prev) => {
+      const newOrder = { ...prev };
+      if (newOrder[number]) {
+        // Remove the number from the compute order
+        const removedOrder = newOrder[number];
+        delete newOrder[number];
+
+        // Decrement orders greater than the removed one
+        Object.keys(newOrder).forEach((key) => {
+          if (newOrder[key] > removedOrder) {
+            newOrder[key] -= 1;
+          }
+        });
+      } else {
+        // Add to order
+        const maxOrder = Math.max(0, ...Object.values(newOrder));
+        newOrder[number] = maxOrder + 1;
+      }
+      return newOrder;
+    });
   };
 
   useEffect(() => {
@@ -314,15 +371,12 @@ const NumberPatternSliders = () => {
       const allPositions = visiblePatterns.flatMap((pattern) =>
         pattern.map((value, index) => (value !== 'None' ? index : -1))
       );
-      const positionCounts = allPositions.reduce(
-        (acc, pos) => {
-          if (pos !== -1) {
-            acc[pos] = (acc[pos] || 0) + 1;
-          }
-          return acc;
-        },
-        {}
-      );
+      const positionCounts = allPositions.reduce((acc, pos) => {
+        if (pos !== -1) {
+          acc[pos] = (acc[pos] || 0) + 1;
+        }
+        return acc;
+      }, {});
       setConflictColumns(
         Object.keys(positionCounts)
           .filter((pos) => positionCounts[pos] > 1)
@@ -343,13 +397,22 @@ const NumberPatternSliders = () => {
       return;
     }
 
-    let result = [...visiblePatterns[0].pattern];
-    result = result.map((value) =>
-      value !== 'None' ? { value: parseInt(value), row: visiblePatterns[0].row } : 'None'
+    // Sort rows based on computeOrder, then add any unordered visible rows
+    const computeOrderEntries = Object.entries(computeOrder).sort(
+      (a, b) => a[1] - b[1]
     );
+    const orderedRows = computeOrderEntries.map(([row]) => parseInt(row));
+    const unorderedRows = visiblePatterns
+      .map((p) => p.row)
+      .filter((row) => !orderedRows.includes(row));
+    const finalOrder = [...orderedRows, ...unorderedRows];
 
-    for (let i = 1; i < visiblePatterns.length; i++) {
-      const { row, pattern } = visiblePatterns[i];
+    let result = [];
+
+    for (let rowNumber of finalOrder) {
+      const patternObj = visiblePatterns.find((p) => p.row === rowNumber);
+      if (!patternObj) continue; // Skip if pattern not found
+      const { pattern } = patternObj;
 
       const indices = pattern
         .map((value, index) => (value !== 'None' ? index : -1))
@@ -368,7 +431,10 @@ const NumberPatternSliders = () => {
 
         // Move to the nth next undefined slot in result
         undefinedCount = 0;
-        while (undefinedCount < segmentLength && currentInsertIndex < result.length) {
+        while (
+          undefinedCount < segmentLength &&
+          currentInsertIndex < result.length
+        ) {
           if (result[currentInsertIndex] === 'None') {
             undefinedCount++;
           }
@@ -383,7 +449,10 @@ const NumberPatternSliders = () => {
         }
 
         // Insert the value
-        result[currentInsertIndex - 1] = { value: pattern[indices[j]], row };
+        result[currentInsertIndex - 1] = {
+          value: pattern[indices[j]],
+          row: rowNumber,
+        };
       }
     }
 
@@ -503,6 +572,8 @@ const NumberPatternSliders = () => {
                 onPatternChange={handlePatternChange}
                 isStatic={isStatic}
                 conflictColumns={conflictColumns}
+                computeOrder={computeOrder[index + 1]}
+                onComputeOrderChange={handleComputeOrderChange}
               />
             ))}
           </div>
@@ -523,4 +594,5 @@ const NumberPatternSliders = () => {
 };
 
 export default NumberPatternSliders;
+
 
