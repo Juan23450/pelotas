@@ -7,17 +7,36 @@ const NumberPattern = ({
   conflictColumns,
   computeOrder,
   onComputeOrderChange,
+  baseValue,
+  periodicInterval,
+  patternType,
+  instances,
+  patternShift,
+  onBaseValueChange,
+  onPeriodicIntervalChange,
+  onPatternTypeChange,
+  onInstancesChange,
+  onPatternShiftChange,
+  onReset,
 }) => {
-  const [baseValue, setBaseValue] = useState(1);
-  const [periodicInterval, setPeriodicInterval] = useState(1);
-  const [instances, setInstances] = useState(10);
-  const [patternShift, setPatternShift] = useState(-1); // Shift pattern so first instance is at index 0
-
   const generatePattern = () => {
     let pattern = [];
     let currentPos = patternShift;
     for (let n = 0; n < instances; n++) {
-      const space = (baseValue + n) * periodicInterval;
+      // Calculate space between instances based on pattern type
+      let space;
+      switch (patternType) {
+        case 'Quadratic':
+          space = Math.pow(baseValue + n, 2);
+          break;
+        case 'Cubic':
+          space = Math.pow(baseValue + n, 3);
+          break;
+        default: // 'Linear'
+          space = baseValue + n;
+      }
+      space *= periodicInterval; // Apply periodic interval
+
       currentPos += space;
       pattern.push({ value: number, instance: n, position: currentPos });
       for (let i = 1; i < periodicInterval; i++) {
@@ -36,7 +55,7 @@ const NumberPattern = ({
 
   useEffect(() => {
     setPattern(generatePattern());
-  }, [baseValue, periodicInterval, instances, patternShift]);
+  }, [baseValue, periodicInterval, patternType, instances, patternShift]);
 
   const generatePythonList = () => {
     const maxLength = 1000; // Adjust as needed
@@ -65,8 +84,8 @@ const NumberPattern = ({
     const startValue = index === 0 ? baseValue : patternShift;
     const handleMove = (e) => {
       const diff = Math.round((e.clientX - startX) / 10);
-      if (index === 0) setBaseValue(startValue + diff);
-      else setPatternShift(startValue + diff);
+      if (index === 0) onBaseValueChange(startValue + diff);
+      else onPatternShiftChange(startValue + diff);
     };
     document.addEventListener('mousemove', handleMove);
     document.addEventListener(
@@ -105,30 +124,46 @@ const NumberPattern = ({
       <div className="flex-grow">
         <div className="flex items-center flex-wrap text-white mb-2">
           <span className="w-8 font-bold mr-2">{number}:</span>
-          <input
-            type="range"
-            min="1"
-            max="20"
-            value={instances}
-            onChange={(e) => setInstances(parseInt(e.target.value))}
-            className="w-32 h-2 bg-blue-600 rounded-lg appearance-none cursor-pointer mr-2"
-          />
-          <input
-            type="range"
-            min="1"
-            max="5"
-            value={periodicInterval}
-            onChange={(e) => setPeriodicInterval(parseInt(e.target.value))}
-            className="w-32 h-2 bg-blue-600 rounded-lg appearance-none cursor-pointer mr-2"
-          />
+          {/* Instances Slider */}
+          <div className="flex items-center mr-2">
+            <span className="text-xs mr-1">Instances:</span>
+            <input
+              type="range"
+              min="1"
+              max="20"
+              value={instances}
+              onChange={(e) => onInstancesChange(parseInt(e.target.value))}
+              className="w-24 h-2 bg-blue-600 rounded-lg appearance-none cursor-pointer"
+            />
+          </div>
+          {/* Periodic Interval Slider */}
+          <div className="flex items-center mr-2">
+            <span className="text-xs mr-1">Periodic:</span>
+            <input
+              type="range"
+              min="1"
+              max="5"
+              value={periodicInterval}
+              onChange={(e) => onPeriodicIntervalChange(parseInt(e.target.value))}
+              className="w-24 h-2 bg-blue-600 rounded-lg appearance-none cursor-pointer"
+            />
+          </div>
+          {/* Pattern Type Selector */}
+          <div className="flex items-center mr-2">
+            <span className="text-xs mr-1">Pattern:</span>
+            <select
+              value={patternType}
+              onChange={(e) => onPatternTypeChange(e.target.value)}
+              className="bg-gray-800 text-white px-2 py-1 rounded"
+            >
+              <option value="Linear">Linear</option>
+              <option value="Quadratic">Quadratic</option>
+              <option value="Cubic">Cubic</option>
+            </select>
+          </div>
           <span className="text-sm w-24">Base Value: {baseValue}</span>
           <button
-            onClick={() => {
-              setBaseValue(1);
-              setPeriodicInterval(1);
-              setPatternShift(-1); // Reset to -1 to start at index 0
-              setInstances(10);
-            }}
+            onClick={onReset}
             className="bg-red-500 hover:bg-red-700 text-white font-bold py-1 px-2 rounded ml-2"
           >
             Reset
@@ -138,8 +173,7 @@ const NumberPattern = ({
         <div
           className="h-10 relative overflow-hidden whitespace-nowrap border-b border-white"
           style={{
-            backgroundImage:
-              'linear-gradient(90deg, #333 1px, transparent 1px)',
+            backgroundImage: 'linear-gradient(90deg, #333 1px, transparent 1px)',
             backgroundSize: '10px 10px',
           }}
         >
@@ -338,6 +372,8 @@ const NumberPatternSliders = () => {
   const [conflictColumns, setConflictColumns] = useState([]);
   const [finalProductRowList, setFinalProductRowList] = useState([]);
   const [computeOrder, setComputeOrder] = useState({});
+  const [checkAll, setCheckAll] = useState(false); // New state for "Check All"
+  const [numberPatternStates, setNumberPatternStates] = useState({}); // State for NumberPatterns
   const maxRows = 50;
 
   const handlePatternChange = (number, pythonList) => {
@@ -508,9 +544,127 @@ const NumberPatternSliders = () => {
     });
   };
 
+  // Handlers for NumberPattern state changes
+  const handleBaseValueChange = (number, newValue) => {
+    if (checkAll) {
+      // Update baseValue for all visible numbers
+      setNumberPatternStates((prevStates) => {
+        const newStates = { ...prevStates };
+        for (let i = 1; i <= rowCount; i++) {
+          newStates[i] = { ...newStates[i], baseValue: newValue };
+        }
+        return newStates;
+      });
+    } else {
+      // Update baseValue for the specific number
+      setNumberPatternStates((prevStates) => ({
+        ...prevStates,
+        [number]: { ...prevStates[number], baseValue: newValue },
+      }));
+    }
+  };
+
+  const handlePeriodicIntervalChange = (number, newValue) => {
+    if (checkAll) {
+      setNumberPatternStates((prevStates) => {
+        const newStates = { ...prevStates };
+        for (let i = 1; i <= rowCount; i++) {
+          newStates[i] = { ...newStates[i], periodicInterval: newValue };
+        }
+        return newStates;
+      });
+    } else {
+      setNumberPatternStates((prevStates) => ({
+        ...prevStates,
+        [number]: { ...prevStates[number], periodicInterval: newValue },
+      }));
+    }
+  };
+
+  const handlePatternTypeChange = (number, newValue) => {
+    if (checkAll) {
+      setNumberPatternStates((prevStates) => {
+        const newStates = { ...prevStates };
+        for (let i = 1; i <= rowCount; i++) {
+          newStates[i] = { ...newStates[i], patternType: newValue };
+        }
+        return newStates;
+      });
+    } else {
+      setNumberPatternStates((prevStates) => ({
+        ...prevStates,
+        [number]: { ...prevStates[number], patternType: newValue },
+      }));
+    }
+  };
+
+  const handleInstancesChange = (number, newValue) => {
+    if (checkAll) {
+      setNumberPatternStates((prevStates) => {
+        const newStates = { ...prevStates };
+        for (let i = 1; i <= rowCount; i++) {
+          newStates[i] = { ...newStates[i], instances: newValue };
+        }
+        return newStates;
+      });
+    } else {
+      setNumberPatternStates((prevStates) => ({
+        ...prevStates,
+        [number]: { ...prevStates[number], instances: newValue },
+      }));
+    }
+  };
+
+  const handlePatternShiftChange = (number, newValue) => {
+    if (checkAll) {
+      setNumberPatternStates((prevStates) => {
+        const newStates = { ...prevStates };
+        for (let i = 1; i <= rowCount; i++) {
+          newStates[i] = { ...newStates[i], patternShift: newValue };
+        }
+        return newStates;
+      });
+    } else {
+      setNumberPatternStates((prevStates) => ({
+        ...prevStates,
+        [number]: { ...prevStates[number], patternShift: newValue },
+      }));
+    }
+  };
+
+  const handleReset = (number) => {
+    if (checkAll) {
+      // Reset all visible numbers
+      setNumberPatternStates((prevStates) => {
+        const newStates = { ...prevStates };
+        for (let i = 1; i <= rowCount; i++) {
+          newStates[i] = {
+            baseValue: 1,
+            periodicInterval: 1,
+            patternType: 'Linear',
+            instances: 10,
+            patternShift: -1,
+          };
+        }
+        return newStates;
+      });
+    } else {
+      // Reset specific number
+      setNumberPatternStates((prevStates) => ({
+        ...prevStates,
+        [number]: {
+          baseValue: 1,
+          periodicInterval: 1,
+          patternType: 'Linear',
+          instances: 10,
+          patternShift: -1,
+        },
+      }));
+    }
+  };
+
   return (
     <div className="p-4 bg-black text-white flex flex-col min-h-screen">
-      {/* Changed h-screen to min-h-screen */}
       <div className="flex mb-4">
         <div className="flex flex-col mr-4">
           <input
@@ -569,6 +723,16 @@ const NumberPatternSliders = () => {
             />
             <label className="text-white">Static Mode (Highlight Conflicts)</label>
           </div>
+          {/* Check All Checkbox */}
+          <div className="flex items-center mt-4">
+            <input
+              type="checkbox"
+              checked={checkAll}
+              onChange={(e) => setCheckAll(e.target.checked)}
+              className="mr-2"
+            />
+            <label className="text-white">Check All (Apply actions to all rows)</label>
+          </div>
         </div>
         <div className="flex-grow flex flex-col">
           <div className="flex-grow overflow-x-hidden overflow-y-auto">
@@ -581,6 +745,46 @@ const NumberPatternSliders = () => {
                 conflictColumns={conflictColumns}
                 computeOrder={computeOrder[index + 1]}
                 onComputeOrderChange={handleComputeOrderChange}
+                // Pass down the state and change handlers
+                baseValue={
+                  numberPatternStates[index + 1]?.baseValue !== undefined
+                    ? numberPatternStates[index + 1].baseValue
+                    : 1
+                }
+                periodicInterval={
+                  numberPatternStates[index + 1]?.periodicInterval !== undefined
+                    ? numberPatternStates[index + 1].periodicInterval
+                    : 1
+                }
+                patternType={
+                  numberPatternStates[index + 1]?.patternType || 'Linear'
+                }
+                instances={
+                  numberPatternStates[index + 1]?.instances !== undefined
+                    ? numberPatternStates[index + 1].instances
+                    : 10
+                }
+                patternShift={
+                  numberPatternStates[index + 1]?.patternShift !== undefined
+                    ? numberPatternStates[index + 1].patternShift
+                    : -1
+                }
+                onBaseValueChange={(newValue) =>
+                  handleBaseValueChange(index + 1, newValue)
+                }
+                onPeriodicIntervalChange={(newValue) =>
+                  handlePeriodicIntervalChange(index + 1, newValue)
+                }
+                onPatternTypeChange={(newValue) =>
+                  handlePatternTypeChange(index + 1, newValue)
+                }
+                onInstancesChange={(newValue) =>
+                  handleInstancesChange(index + 1, newValue)
+                }
+                onPatternShiftChange={(newValue) =>
+                  handlePatternShiftChange(index + 1, newValue)
+                }
+                onReset={() => handleReset(index + 1)}
               />
             ))}
           </div>
@@ -601,4 +805,5 @@ const NumberPatternSliders = () => {
 };
 
 export default NumberPatternSliders;
+
 
