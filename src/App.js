@@ -260,7 +260,9 @@ const FinalProductRow = ({ finalProductRowList }) => {
 const ExpandedFinalProductRow = ({ finalProductRowList }) => {
   const distinctValues = [
     ...new Set(
-      finalProductRowList.filter((item) => item !== 'None').map((item) => item.value)
+      finalProductRowList
+        .filter((item) => item !== 'None')
+        .map((item) => item.value)
     ),
   ];
 
@@ -316,7 +318,9 @@ const ExpandedFinalProductRow = ({ finalProductRowList }) => {
             >
               {`python_list_value_${value} = [${finalProductRowList
                 .map((item) =>
-                  item === 'None' || item.value !== value ? 'None' : `${item.value}`
+                  item === 'None' || item.value !== value
+                    ? 'None'
+                    : `${item.value}`
                 )
                 .join(', ')}]`}
             </pre>
@@ -485,7 +489,8 @@ const NumberPatternSliders = () => {
 
   const copyToCSV = () => {
     const csvString = finalProductRowList
-      .map((item) => (item !== 'None' ? item.value : ''))
+      .filter((item) => item !== 'None' && item !== undefined)
+      .map((item) => item.value)
       .join(',');
     navigator.clipboard.writeText(csvString).then(() => {
       alert('Final Product Row copied as CSV!');
@@ -494,7 +499,8 @@ const NumberPatternSliders = () => {
 
   const copyToPython = () => {
     const pythonString = `final_product_row = [${finalProductRowList
-      .map((item) => (item === 'None' ? 'None' : `${item.value}`))
+      .filter((item) => item !== 'None' && item !== undefined)
+      .map((item) => item.value)
       .join(', ')}]`;
 
     navigator.clipboard.writeText(pythonString).then(() => {
@@ -594,5 +600,3 @@ const NumberPatternSliders = () => {
 };
 
 export default NumberPatternSliders;
-
-
