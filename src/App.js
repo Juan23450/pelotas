@@ -509,7 +509,8 @@ const NumberPatternSliders = () => {
   };
 
   return (
-    <div className="p-4 bg-black text-white flex flex-col h-screen">
+    <div className="p-4 bg-black text-white flex flex-col min-h-screen">
+      {/* Changed h-screen to min-h-screen */}
       <div className="flex mb-4">
         <div className="flex flex-col mr-4">
           <input
@@ -600,3 +601,4 @@ const NumberPatternSliders = () => {
 };
 
 export default NumberPatternSliders;
+
