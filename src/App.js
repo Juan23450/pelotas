@@ -21,7 +21,7 @@ const NumberPattern = ({
 }) => {
   const generatePattern = () => {
     let pattern = [];
-    let currentPos = patternShift;
+    let currentPos = patternShift >= 0 ? patternShift : 0;
     for (let n = 0; n < instances; n++) {
       // Calculate space between instances based on pattern type
       let space;
@@ -37,16 +37,11 @@ const NumberPattern = ({
       }
       space *= periodicInterval; // Apply periodic interval
 
-      currentPos += space;
-      pattern.push({ value: number, instance: n, position: currentPos });
-      for (let i = 1; i < periodicInterval; i++) {
-        pattern.push({
-          value: undefined,
-          instance: -1,
-          position: currentPos + i,
-        });
+      if (n > 0) {
+        currentPos += space;
       }
-      currentPos += periodicInterval - 1;
+
+      pattern.push({ value: number, instance: n, position: currentPos });
     }
     return pattern;
   };
@@ -643,7 +638,7 @@ const NumberPatternSliders = () => {
             periodicInterval: 1,
             patternType: 'Linear',
             instances: 10,
-            patternShift: -1,
+            patternShift: 0,
           };
         }
         return newStates;
@@ -657,7 +652,7 @@ const NumberPatternSliders = () => {
           periodicInterval: 1,
           patternType: 'Linear',
           instances: 10,
-          patternShift: -1,
+          patternShift: 0,
         },
       }));
     }
@@ -721,7 +716,9 @@ const NumberPatternSliders = () => {
               onChange={(e) => setIsStatic(e.target.checked)}
               className="mr-2"
             />
-            <label className="text-white">Static Mode (Highlight Conflicts)</label>
+            <label className="text-white">
+              Static Mode (Highlight Conflicts)
+            </label>
           </div>
           {/* Check All Checkbox */}
           <div className="flex items-center mt-4">
@@ -731,7 +728,9 @@ const NumberPatternSliders = () => {
               onChange={(e) => setCheckAll(e.target.checked)}
               className="mr-2"
             />
-            <label className="text-white">Check All (Apply actions to all rows)</label>
+            <label className="text-white">
+              Check All (Apply actions to all rows)
+            </label>
           </div>
         </div>
         <div className="flex-grow flex flex-col">
@@ -767,7 +766,7 @@ const NumberPatternSliders = () => {
                 patternShift={
                   numberPatternStates[index + 1]?.patternShift !== undefined
                     ? numberPatternStates[index + 1].patternShift
-                    : -1
+                    : 0
                 }
                 onBaseValueChange={(newValue) =>
                   handleBaseValueChange(index + 1, newValue)
@@ -805,5 +804,3 @@ const NumberPatternSliders = () => {
 };
 
 export default NumberPatternSliders;
-
-
